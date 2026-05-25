@@ -341,6 +341,11 @@ Examples:
 
     args = parser.parse_args()
 
+    # If detect-roi is not specified, use ref-roi so that reference and
+    # detection regions are consistent (参考区域和检测区域保持一致)
+    if args.detect_roi is None and args.ref_roi is not None:
+        args.detect_roi = args.ref_roi
+
     # Initialize detector
     detector = ColorDetector(
         yellow_ratio_threshold=args.threshold,
