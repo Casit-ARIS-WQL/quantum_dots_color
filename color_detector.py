@@ -341,6 +341,11 @@ Examples:
 
     args = parser.parse_args()
 
+    # If detect-roi is not specified, use ref-roi so that reference and
+    # detection regions are consistent (参考区域和检测区域保持一致)
+    if args.detect_roi is None and args.ref_roi is not None:
+        args.detect_roi = args.ref_roi
+
     # Initialize detector
     detector = ColorDetector(
         yellow_ratio_threshold=args.threshold,
@@ -351,6 +356,30 @@ Examples:
     print(f"Calibrating from reference image: {args.reference}")
     detector.calibrate(args.reference, roi=args.ref_roi)
     print()
+
+    # Visualize reference ROI on the reference image
+    if args.vis_dir:
+        os.makedirs(args.vis_dir, exist_ok=True)
+        ref_img = cv2.imread(args.reference)
+        if ref_img is not None:
+            if args.ref_roi:
+                x, y, w, h = args.ref_roi
+                cv2.rectangle(ref_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.putText(
+                    ref_img, "REF ROI", (x, max(0, y - 10)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2
+                )
+            else:
+                # If no ref-roi specified, draw border around the entire image
+                h_img, w_img = ref_img.shape[:2]
+                cv2.rectangle(ref_img, (0, 0), (w_img - 1, h_img - 1), (0, 255, 0), 2)
+                cv2.putText(
+                    ref_img, "REF (full image)", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2
+                )
+            ref_save_path = os.path.join(args.vis_dir, "reference_roi.jpg")
+            cv2.imwrite(ref_save_path, ref_img)
+            print(f"Reference ROI visualization saved to: {ref_save_path}")
 
     # Process images
     if args.input_dir:
