@@ -293,6 +293,8 @@ Examples:
         required=True,
         help="Path to reference image for yellow color calibration.",
     )
+    # /nas/wql/Quantum_dots/quantum_dots/data/yellow/frame_00240.jpg
+    # /nas/wql/Quantum_dots/quantum_dots/data/yellow
     parser.add_argument(
         "--ref-roi",
         type=parse_roi,
@@ -317,6 +319,14 @@ Examples:
         default=10,
         help="HSV margin for calibration (default: 10).",
     )
+
+    parser.add_argument(
+        "--vis-dir",
+        type=str,
+        default="./vis_color",
+        help="Directory to save visualized images with ROI bounding boxes (default: ./vis_color).",
+    )
+
 
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument(
@@ -349,6 +359,41 @@ Examples:
         )
     else:
         results = detector.batch_detect(args.images, roi=args.detect_roi)
+
+    if args.vis_dir:
+        os.makedirs(args.vis_dir, exist_ok=True)
+        print(f"可视化结果将保存在: {args.vis_dir}")
+
+    # Print results
+    print("\n--- Results ---")
+    print(f"{'Image':<50} {'Color':<10} {'Yellow Ratio':<15}")
+    print("-" * 75)
+    for result in results:
+        image_name = os.path.basename(result["image"])
+        color = result["color"]
+        ratio = result["yellow_ratio"]
+        print(f"{image_name:<50} {color:<10} {ratio:<15.4f}")
+
+        # ================= 可视化 ROI 框 =================
+        if args.vis_dir and color != "error":
+            img = cv2.imread(result["image"])
+            if img is not None:
+                box_color = (0, 255, 255) if color == "yellow" else (255, 255, 255)
+                label = f"{color.upper()} ({ratio:.2f})"
+                
+                if args.detect_roi:
+                    x, y, w, h = args.detect_roi
+                    # 绘制矩形框
+                    cv2.rectangle(img, (x, y), (x + w, y + h), box_color, 2)
+                    # 在框上方添加文字
+                    cv2.putText(img, label, (x, max(0, y - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, box_color, 2)
+                else:
+                    # 全局检测时在左上角标记
+                    cv2.putText(img, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, box_color, 2)
+                
+                save_path = os.path.join(args.vis_dir, image_name)
+                cv2.imwrite(save_path, img)
+
 
     # Print results
     print("\n--- Results ---")
